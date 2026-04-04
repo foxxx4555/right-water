@@ -1,0 +1,14 @@
+{
+  "buckets": [],
+  "columns": [
+    "id",
+    "name",
+    "category",
+    "price",
+    "discount",
+    "image",
+    "origin",
+    "created_at",
+    "description"
+  ]
+}

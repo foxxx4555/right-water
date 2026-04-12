@@ -29,18 +29,18 @@ const AdminPanel = ({ onAddProduct, onUpdateProduct, products, onDeleteProduct, 
     is_out_of_stock: false
   });
 
-  useEffect(() => {
-    if (activeTab === 'orders') {
-      fetchOrders();
-    }
-  }, [activeTab]);
-
   const fetchOrders = async () => {
     setLoadingOrders(true);
     const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
     if (data) setOrders(data);
     setLoadingOrders(false);
   };
+
+  useEffect(() => {
+    if (activeTab === 'orders') {
+      fetchOrders();
+    }
+  }, [activeTab]);
 
   const updateOrderStatus = async (orderId, newStatus) => {
     const { error } = await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);

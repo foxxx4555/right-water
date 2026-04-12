@@ -15,8 +15,9 @@ const AdminPanel = ({ onAddProduct, onUpdateProduct, products, onDeleteProduct, 
   const [adminCategorySearch, setAdminCategorySearch] = useState('');
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [formCategorySearch, setFormCategorySearch] = useState('');
-  const [imageFile, setImageFile] = useState(null); // Actual file to upload
-  const [imagePreview, setImagePreview] = useState(null); // For UI preview
+  const [imageFiles, setImageFiles] = useState([]); // Array of actual files to upload
+  const [imagePreviews, setImagePreviews] = useState([]); // Array of strings For UI preview
+  const [existingImages, setExistingImages] = useState([]); // Images already in database
   
   const [formData, setFormData] = useState({
     name: '',
@@ -24,7 +25,8 @@ const AdminPanel = ({ onAddProduct, onUpdateProduct, products, onDeleteProduct, 
     origin: ORIGINS[0],
     price: '',
     discount: '',
-    description: ''
+    description: '',
+    is_out_of_stock: false
   });
 
   useEffect(() => {
@@ -79,10 +81,20 @@ const AdminPanel = ({ onAddProduct, onUpdateProduct, products, onDeleteProduct, 
   };
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      setImageFiles(prev => [...prev, ...files]);
+      const newPreviews = files.map(file => URL.createObjectURL(file));
+      setImagePreviews(prev => [...prev, ...newPreviews]);
+    }
+  };
+
+  const removeImagePreview = (index, isExisting) => {
+    if (isExisting) {
+      setExistingImages(existingImages.filter((_, i) => i !== index));
+    } else {
+       setImageFiles(imageFiles.filter((_, i) => i !== index));
+       setImagePreviews(imagePreviews.filter((_, i) => i !== index));
     }
   };
 
@@ -91,10 +103,10 @@ const AdminPanel = ({ onAddProduct, onUpdateProduct, products, onDeleteProduct, 
     
     // Image requirement removed as per user request
     
-    const productData = { ...formData, imageFile };
+    const productData = { ...formData, imageFiles, existingImages };
     
     if (editingProduct) {
-      onUpdateProduct({ ...productData, id: editingProduct.id, existingImage: editingProduct.image });
+      onUpdateProduct({ ...productData, id: editingProduct.id });
       setEditingProduct(null);
     } else {
       onAddProduct(productData);
@@ -107,10 +119,12 @@ const AdminPanel = ({ onAddProduct, onUpdateProduct, products, onDeleteProduct, 
       origin: ORIGINS[0],
       price: '',
       discount: '',
-      description: ''
+      description: '',
+      is_out_of_stock: false
     });
-    setImageFile(null);
-    setImagePreview(null);
+    setImageFiles([]);
+    setImagePreviews([]);
+    setExistingImages([]);
     e.target.reset();
   };
 
@@ -122,10 +136,16 @@ const AdminPanel = ({ onAddProduct, onUpdateProduct, products, onDeleteProduct, 
       origin: p.origin || ORIGINS[0],
       price: p.price,
       discount: p.discount || '',
-      description: p.description || ''
+      description: p.description || '',
+      is_out_of_stock: p.is_out_of_stock || false
     });
-    setImagePreview(p.image);
-    setImageFile(null);
+    let imagesArr = [];
+    if (p.images && p.images.length > 0) imagesArr = p.images;
+    else if (p.image) imagesArr = [p.image];
+    
+    setExistingImages(imagesArr);
+    setImagePreviews([]);
+    setImageFiles([]);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -137,10 +157,12 @@ const AdminPanel = ({ onAddProduct, onUpdateProduct, products, onDeleteProduct, 
       origin: ORIGINS[0],
       price: '',
       discount: '',
-      description: ''
+      description: '',
+      is_out_of_stock: false
     });
-    setImageFile(null);
-    setImagePreview(null);
+    setImageFiles([]);
+    setImagePreviews([]);
+    setExistingImages([]);
   };
 
   const filteredAdminProducts = products.filter(p => {
@@ -271,19 +293,34 @@ const AdminPanel = ({ onAddProduct, onUpdateProduct, products, onDeleteProduct, 
           </div>
 
           <div className="form-group">
-            <label>صورة المنتج</label>
+            <label>صور المنتج (يمكنك اختيار عدة صور)</label>
             <div className="chic-upload-area">
               <input
                 type="file"
                 id="file-upload"
                 className="hidden-file-input"
                 accept="image/*"
+                multiple
                 onChange={handleFileChange}
               />
-              <label htmlFor="file-upload" className="custom-upload-btn">
-                <span>{imagePreview ? 'تم اختيار صورة' : 'إضافة صورة للمنتج'}</span>
-                {imagePreview && <img src={imagePreview} alt="Preview" className="upload-preview" />}
+              <label htmlFor="file-upload" className="custom-upload-btn mb-10">
+                <span>إضافة صور للمنتج</span>
               </label>
+              
+              <div className="upload-previews-container row-flex">
+                {existingImages.map((img, idx) => (
+                  <div key={`existing-${idx}`} className="preview-item">
+                    <img src={img} alt="Existing Preview" className="upload-preview-small" />
+                    <button type="button" className="remove-preview-btn" onClick={() => removeImagePreview(idx, true)}>x</button>
+                  </div>
+                ))}
+                {imagePreviews.map((preview, idx) => (
+                  <div key={`new-${idx}`} className="preview-item">
+                    <img src={preview} alt="New Preview" className="upload-preview-small" />
+                    <button type="button" className="remove-preview-btn" onClick={() => removeImagePreview(idx, false)}>x</button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -296,6 +333,19 @@ const AdminPanel = ({ onAddProduct, onUpdateProduct, products, onDeleteProduct, 
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             ></textarea>
           </div>
+
+          <div className="form-group checkbox-group">
+            <label className="checkbox-label" style={{display:'flex', alignItems:'center', gap:'10px', fontWeight:'700', cursor:'pointer', color:'#ff4757', background: '#fff0f2', padding: '10px', borderRadius: '10px', border: '1px solid #ffccd2'}}>
+              <input 
+                type="checkbox" 
+                checked={formData.is_out_of_stock}
+                onChange={(e) => setFormData({ ...formData, is_out_of_stock: e.target.checked })}
+                style={{transform: 'scale(1.5)', accentColor: '#ff4757'}}
+              />
+              نفذت الكمية (تعطيل الإضافة للسلة من العملاء)
+            </label>
+          </div>
+
 
           <div className="form-actions-row">
             <button type="submit" className="btn btn-primary submit-btn-chic">

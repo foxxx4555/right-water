@@ -305,33 +305,28 @@ function App() {
               <AdminPanel
                 products={products}
                 onAddProduct={async (p) => {
-                  const { imageFile, price, discount, ...data } = p;
-                  let imageUrl = '';
+                  const { imageFiles, price, discount, ...data } = p;
+                  let imageUrls = [];
                   
                   // Sanitize numeric fields
                   const sanitizedPrice = parseFloat(price) || 0;
                   const sanitizedDiscount = (discount && discount !== '') ? parseFloat(discount) : null;
 
-                  if (imageFile) {
+                  if (imageFiles && imageFiles.length > 0) {
                     try {
-                      // تنظيف اسم الملف من المسافات والرموز خاصة
-                      const cleanFileName = imageFile.name.replace(/[^a-zA-Z0-9.]/g, '_');
-                      const fileName = `${Date.now()}-${cleanFileName}`;
-                      
-                      const { data: uploadData, error: uploadError } = await supabase.storage
-                        .from('product-images')
-                        .upload(fileName, imageFile);
-                      
-                      if (!uploadError) {
-                        const { data: { publicUrl } } = supabase.storage
-                          .from('product-images')
-                          .getPublicUrl(fileName);
-                        imageUrl = publicUrl;
-                      } else {
-                        console.warn('Storage error (Bucket might be missing):', uploadError.message);
-                      }
+                      const uploadPromises = imageFiles.map(async (file) => {
+                        const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+                        const fileName = `${Date.now()}-${cleanFileName}`;
+                        const { data: uploadData, error: uploadError } = await supabase.storage.from('product-images').upload(fileName, file);
+                        if (!uploadError) {
+                          return supabase.storage.from('product-images').getPublicUrl(fileName).data.publicUrl;
+                        }
+                        return null;
+                      });
+                      const urls = await Promise.all(uploadPromises);
+                      imageUrls = urls.filter(url => url !== null);
                     } catch (err) {
-                      console.error('Image upload failed:', err);
+                      console.error('Images upload failed:', err);
                     }
                   }
 
@@ -339,7 +334,8 @@ function App() {
                     ...data, 
                     price: sanitizedPrice, 
                     discount: sanitizedDiscount, 
-                    image: imageUrl 
+                    images: imageUrls,
+                    image: imageUrls.length > 0 ? imageUrls[0] : ''
                   }]).select();
 
                   if (!error) {
@@ -352,31 +348,29 @@ function App() {
                   }
                 }}
                 onUpdateProduct={async (p) => {
-                  const { id, imageFile, existingImage, price, discount, ...data } = p;
-                  let imageUrl = existingImage;
+                  const { id, imageFiles, existingImages, price, discount, ...data } = p;
+                  let imageUrls = existingImages || [];
 
                   // Sanitize numeric fields
                   const sanitizedPrice = parseFloat(price) || 0;
                   const sanitizedDiscount = (discount && discount !== '') ? parseFloat(discount) : null;
 
-                  if (imageFile) {
+                  if (imageFiles && imageFiles.length > 0) {
                     try {
-                      // تنظيف اسم الملف من المسافات والرموز خاصة
-                      const cleanFileName = imageFile.name.replace(/[^a-zA-Z0-9.]/g, '_');
-                      const fileName = `${Date.now()}-${cleanFileName}`;
-                      
-                      const { data: uploadData, error: uploadError } = await supabase.storage
-                        .from('product-images')
-                        .upload(fileName, imageFile);
-                      
-                      if (!uploadError) {
-                        const { data: { publicUrl } } = supabase.storage
-                          .from('product-images')
-                          .getPublicUrl(fileName);
-                        imageUrl = publicUrl;
-                      }
+                      const uploadPromises = imageFiles.map(async (file) => {
+                        const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+                        const fileName = `${Date.now()}-${cleanFileName}`;
+                        const { data: uploadData, error: uploadError } = await supabase.storage.from('product-images').upload(fileName, file);
+                        if (!uploadError) {
+                          return supabase.storage.from('product-images').getPublicUrl(fileName).data.publicUrl;
+                        }
+                        return null;
+                      });
+                      const urls = await Promise.all(uploadPromises);
+                      const newUrls = urls.filter(url => url !== null);
+                      imageUrls = [...imageUrls, ...newUrls];
                     } catch (err) {
-                      console.error('Image upload failed:', err);
+                      console.error('Images upload failed:', err);
                     }
                   }
 
@@ -384,7 +378,8 @@ function App() {
                     ...data, 
                     price: sanitizedPrice, 
                     discount: sanitizedDiscount, 
-                    image: imageUrl 
+                    images: imageUrls,
+                    image: imageUrls.length > 0 ? imageUrls[0] : ''
                   }).eq('id', id);
                   
                   if (!error) {
@@ -393,7 +388,8 @@ function App() {
                       ...data, 
                       price: sanitizedPrice, 
                       discount: sanitizedDiscount, 
-                      image: imageUrl 
+                      images: imageUrls,
+                      image: imageUrls.length > 0 ? imageUrls[0] : '' 
                     } : item));
                     alert('تم حفظ التعديلات بنجاح! ✅');
                   } else {

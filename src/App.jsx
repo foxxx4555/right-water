@@ -316,7 +316,7 @@ function App() {
               <AdminPanel
                 products={products}
                 onAddProduct={async (p) => {
-                  const { imageFiles, price, discount, ...data } = p;
+                  const { imageFiles, price, discount } = p;
                   let imageUrls = [];
                   
                   // Sanitize numeric fields
@@ -341,13 +341,20 @@ function App() {
                     }
                   }
 
-                  const { data: inserted, error } = await supabase.from('products').insert([{ 
-                    ...data, 
-                    price: sanitizedPrice, 
-                    discount: sanitizedDiscount, 
+                  // Explicitly pick only existing DB columns
+                  const insertData = {
+                    name: p.name,
+                    category: p.category,
+                    origin: p.origin,
+                    description: p.description,
+                    is_out_of_stock: p.is_out_of_stock,
+                    price: sanitizedPrice,
+                    discount: sanitizedDiscount,
                     images: imageUrls,
                     image: imageUrls.length > 0 ? imageUrls[0] : ''
-                  }]).select();
+                  };
+
+                  const { data: inserted, error } = await supabase.from('products').insert([insertData]).select();
 
                   if (!error) {
                     if (inserted && inserted[0]) {
@@ -385,13 +392,20 @@ function App() {
                     }
                   }
 
-                  const { error } = await supabase.from('products').update({ 
-                    ...data, 
-                    price: sanitizedPrice, 
-                    discount: sanitizedDiscount, 
+                  // Explicitly pick only existing DB columns
+                  const updateData = {
+                    name: p.name,
+                    category: p.category,
+                    origin: p.origin,
+                    description: p.description,
+                    is_out_of_stock: p.is_out_of_stock,
+                    price: sanitizedPrice,
+                    discount: sanitizedDiscount,
                     images: imageUrls,
                     image: imageUrls.length > 0 ? imageUrls[0] : ''
-                  }).eq('id', id);
+                  };
+
+                  const { error } = await supabase.from('products').update(updateData).eq('id', id);
                   
                   if (!error) {
                     setProducts(prev => prev.map(item => item.id === id ? { 

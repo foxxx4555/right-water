@@ -13,9 +13,13 @@ import './App.css';
 
 function App() {
   const [products, setProducts] = useState([]);
-  const [view, setView] = useState('welcome');
+  const [view, setView] = useState(() => {
+    return localStorage.getItem('rightwater_current_view') || 'welcome';
+  });
   const [loading, setLoading] = useState(true);
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
+    return localStorage.getItem('rightwater_admin_auth') === 'true';
+  });
   const [activeCategory, setActiveCategory] = useState('all');
   const [activeOrigin, setActiveOrigin] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,6 +41,13 @@ function App() {
   useEffect(() => {
     localStorage.setItem('rightwater_cart', JSON.stringify(cartItems));
   }, [cartItems]);
+
+  // حفظ حالة الصفحة وتسجيل الدخول عند التغيير
+  useEffect(() => {
+    localStorage.setItem('rightwater_current_view', view);
+    localStorage.setItem('rightwater_admin_auth', isAdminAuthenticated);
+  }, [view, isAdminAuthenticated]);
+
   const [aboutUsContent, setAboutUsContent] = useState([]);
 
   useEffect(() => {
@@ -315,6 +326,11 @@ function App() {
             ) : (
               <AdminPanel
                 products={products}
+                onLogout={() => {
+                  setIsAdminAuthenticated(false);
+                  localStorage.removeItem('rightwater_admin_auth');
+                  setView('catalog');
+                }}
                 onAddProduct={async (p) => {
                   const { imageFiles, price, discount } = p;
                   let imageUrls = [];

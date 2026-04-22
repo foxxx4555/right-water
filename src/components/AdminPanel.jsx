@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { DEFAULT_CATEGORIES, ORIGINS } from '../constants';
 import AboutUsManager from './AboutUsManager';
 
-const AdminPanel = ({ onAddProduct, onUpdateProduct, products, onDeleteProduct, aboutUsContent, onRefreshAboutUs }) => {
+const AdminPanel = ({ onAddProduct, onUpdateProduct, products, onDeleteProduct, aboutUsContent, onRefreshAboutUs, onLogout }) => {
   const [activeTab, setActiveTab] = useState('products'); // 'products' or 'orders'
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
@@ -186,7 +186,7 @@ const AdminPanel = ({ onAddProduct, onUpdateProduct, products, onDeleteProduct, 
           <button className={`admin-tab ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => setActiveTab('orders')}>أوردرات العملاء</button>
           <button className={`admin-tab ${activeTab === 'aboutUs' ? 'active' : ''}`} onClick={() => setActiveTab('aboutUs')}>معلومات عنا</button>
         </div>
-        <button className="logout-btn-chic" onClick={() => window.location.reload()}>
+        <button className="logout-btn-chic" onClick={onLogout}>
           تسجيل الخروج
         </button>
       </div>

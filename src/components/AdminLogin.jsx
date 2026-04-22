@@ -10,8 +10,12 @@ const AdminLogin = ({ onLogin }) => {
     e.preventDefault();
     setError('');
 
+    // تنظيف المدخلات من المسافات الزائدة
+    const cleanUsername = username.trim();
+    const cleanPassword = password.trim();
+
     // تسجيل الدخول المباشر باسم admin وباسورد admin كما طلبت
-    if (username === 'admin' && password === 'admin') {
+    if (cleanUsername === 'admin' && cleanPassword === 'admin') {
       onLogin();
       return;
     }
@@ -20,18 +24,29 @@ const AdminLogin = ({ onLogin }) => {
       const { data, error: dbError } = await supabase
         .from('admin_auth')
         .select('*')
-        .eq('username', username)
-        .eq('password', password)
+        .eq('username', cleanUsername)
+        .eq('password', cleanPassword)
         .single();
 
-      if (dbError || !data) {
+      if (dbError) {
+        // إذا كان الجدول غير موجود (خطأ 404 أو PGRST116)
+        if (dbError.code === 'PGRST116' || dbError.message?.includes('not found')) {
+          setError('خطأ في اسم المستخدم أو كلمة المرور');
+        } else {
+          console.error('Database Error:', dbError);
+          setError('حدث خطأ في الاتصال بقاعدة البيانات. تأكد من إعداد الجدول.');
+        }
+        return;
+      }
+
+      if (!data) {
         setError('خطأ في اسم المستخدم أو كلمة المرور');
         return;
       }
 
       onLogin();
     } catch (err) {
-      setError('حدث خطأ أثناء الاتصال بقاعدة البيانات');
+      setError('حدث خطأ غير متوقع أثناء الاتصال');
     }
   };
 
